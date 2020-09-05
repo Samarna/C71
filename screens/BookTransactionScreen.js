@@ -4,6 +4,7 @@ import * as Permissions from 'expo-permissions';
 import {BarCodeScanner} from 'expo-barcode-scanner';
 import { TextInput } from 'react-native-gesture-handler';
 import db from '../config.js';
+import firebase from 'firebase';
 
 export default class BookTransactionScreen extends React.Component {
     constructor(){
@@ -35,15 +36,59 @@ export default class BookTransactionScreen extends React.Component {
             this.setState({scanned : true, scannedStudentId : data, buttonState : 'normal'});
         }
     }
-    initiateBookIssue = async()=>{
+    initiateBookIssue =()=>{
+        alert("hi");
         //add a transaction
+        db.collection("Transactions").add({
+            'studentId' : this.state.scannedStudentId,
+            'bookId' : this.state.scannedBookId,
+            'date' : firebase.firestore.Timestamp.now().toDate(),
+            'txnType' : "issue"
+        })
         //change the book's availability
+        db.collection("Books").doc(this.state.scannedBookId).update({
+            'bookAvailable' : false
+        })
         //change number of books issued by student
+        db.collection("Students").doc(this.state.scannedStudentId).update({
+            'numBooksIssued' : firebase.firestore.FieldValue.increment(1)
+        })
+        alert("The book has been issued");
+        this.setState({
+            scannedBookId : '',
+            scannedStudentId : ''
+        })
+    }
+    initiateBookReturn =()=>{
+        alert("Hello");
+        //add a transaction
+        db.collection("Transactions").add({
+            'studentId' : this.state.scannedStudentId,
+            'bookId' : this.state.scannedBookId,
+            'date' : firebase.firestore.Timestamp.now().toDate(),
+            'txnType' : "return"
+        })
+        //change book availability
+        db.collection("Books").doc(this.state.scannedBookId).update({
+            'bookAvailable' : true
+        })
+        //change number of books issued by student
+        db.collection("Students").doc(this.state.scannedStudentId).update({
+            'numBooksIssued' : firebase.firestore.FieldValue.increment(-1)
+        })
+        alert("The book has been returned");
+        this.setState({
+            scannedBookId : '',
+            scannedStudentId : ''
+        })
     }
     handleTransaction =async()=>{
+        console.log(this.state.scannedBookId);
+        console.log(this.state.scannedStudentId);
         var transactionMessage;
         db.collection("Books").doc(this.state.scannedBookId).get()
         .then((doc)=>{var book = doc.data()
+            console.log(book);
         if(book.bookAvailable){
             this.initiateBookIssue();
             transactionMessage = "Book Issued";
